@@ -1,91 +1,83 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+
+const zones = ["ZONE A", "ZONE A1", "ZONE B", "ZONE C", "ZONE D"];
 
 export default function YardView() {
   const [trailers, setTrailers] = useState([]);
-  const [selected, setSelected] = useState(null);
-
-  const zones = ["ZONE A", "ZONE A1", "ZONE B", "ZONE C", "ZONE D"];
+  const [selectedTrailer, setSelectedTrailer] = useState(null);
 
   useEffect(() => {
-    fetch("http://localhost:3001/api/trailers")
-      .then(res => res.json())
-      .then(setTrailers);
+    fetchTrailers();
   }, []);
+
+  const fetchTrailers = async () => {
+    try {
+      const res = await axios.get("http://localhost:3001/api/trailers");
+      setTrailers(res.data);
+    } catch (err) {
+      console.error("Error fetching trailers", err);
+    }
+  };
+
+  const handleDragStart = (e, trailerId) => {
+    e.dataTransfer.setData("trailerId", trailerId);
+  };
 
   const handleDrop = async (e, zone) => {
     const trailerId = e.dataTransfer.getData("trailerId");
-    const from = e.dataTransfer.getData("currentZone");
-    if (!trailerId || from === zone) return;
-
-    // Update trailer's zone
-    await fetch(`http://localhost:3001/api/trailers/${trailerId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentZone: zone })
-    });
-
-    // Log move
-    const trailer = trailers.find(t => t._id === trailerId);
-    await fetch("http://localhost:3001/api/moves", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        trailer: trailer.trailerNumber,
-        from,
-        to: zone,
-        priority: "NORMAL",
-        requestedBy: "System"
-      })
-    });
-
-    // Refresh
-    const updated = await fetch("http://localhost:3001/api/trailers").then(r => r.json());
-    setTrailers(updated);
+    try {
+      await axios.put(`http://localhost:3001/api/trailers/${trailerId}`, { zone });
+      fetchTrailers();
+      // Optionally: create a shunt job here
+    } catch (err) {
+      console.error("Error updating trailer zone", err);
+    }
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Yard View</h2>
-      <div className="grid grid-cols-2 gap-6">
+    <div className="p-4">
+      <h2 className="text-2xl font-bold mb-4">🧭 Live Yard View</h2>
+      <div className="grid grid-cols-5 gap-4">
         {zones.map(zone => (
           <div
             key={zone}
-            onDragOver={e => e.preventDefault()}
             onDrop={e => handleDrop(e, zone)}
-            className="bg-gray-100 p-4 rounded shadow"
+            onDragOver={e => e.preventDefault()}
+            className="bg-gray-100 border rounded-lg p-2 min-h-[150px]"
           >
             <h3 className="text-lg font-semibold mb-2">{zone}</h3>
-            <div className="flex flex-wrap gap-2">
-              {trailers
-                .filter(t => t.currentZone === zone)
-                .map(t => (
-                  <div
-                    key={t._id}
-                    className="p-2 bg-blue-200 rounded cursor-move hover:bg-blue-300"
-                    title={`Unit: ${t.unitNumber}\nDriver: ${t.driverName}`}
-                    draggable
-                    onClick={() => setSelected(t)}
-                    onDragStart={e => {
-                      e.dataTransfer.setData("trailerId", t._id);
-                      e.dataTransfer.setData("currentZone", t.currentZone);
-                    }}
-                  >
-                    {t.trailerNumber}
-                  </div>
-                ))}
-            </div>
+            {trailers
+              .filter(t => t.zone === zone)
+              .map(trailer => (
+                <div
+                  key={trailer._id}
+                  draggable
+                  onDragStart={e => handleDragStart(e, trailer._id)}
+                  onClick={() => setSelectedTrailer(trailer)}
+                  title={`Click for details\nUnit: ${trailer.unitNumber || "N/A"}\nStatus: ${trailer.status}`}
+                  className="cursor-move bg-blue-200 rounded p-2 mb-2 shadow hover:bg-blue-300"
+                >
+                  {trailer.trailerNumber}
+                </div>
+              ))}
           </div>
         ))}
       </div>
 
-      {selected && (
-        <div className="mt-6 p-4 border rounded shadow bg-white">
-          <h4 className="text-lg font-bold mb-2">Trailer Info</h4>
-          <p><strong>Trailer #:</strong> {selected.trailerNumber}</p>
-          <p><strong>Unit #:</strong> {selected.unitNumber}</p>
-          <p><strong>Driver:</strong> {selected.driverName}</p>
-          <p><strong>Status:</strong> {selected.status}</p>
-          <p><strong>Zone:</strong> {selected.currentZone}</p>
+      {selectedTrailer && (
+        <div className="mt-4 p-4 bg-white border rounded shadow">
+          <h3 className="text-lg font-bold">📦 Trailer Details</h3>
+          <p><strong>Trailer:</strong> {selectedTrailer.trailerNumber}</p>
+          <p><strong>Zone:</strong> {selectedTrailer.zone}</p>
+          <p><strong>Status:</strong> {selectedTrailer.status}</p>
+          <p><strong>Unit:</strong> {selectedTrailer.unitNumber || "N/A"}</p>
+          <button
+            className="mt-2 px-4 py-1 bg-gray-500 text-white rounded"
+            onClick={() => setSelectedTrailer(null)}
+          >
+            Close
+          </button>
         </div>
       )}
     </div>
