@@ -89,6 +89,17 @@ app.post("/api/gatehouse", async (req, res) => {
   }
 });
 
+app.get("/api/gatelogs", async (req, res) => {
+  try {
+    const logs = await GateLog.find().sort({ timestamp: -1 }).limit(100); // limit to recent 100
+    res.json(logs);
+  } catch (err) {
+    console.error("❌ Failed to fetch gate logs:", err);
+    res.status(500).json({ message: "Internal error loading logs." });
+  }
+});
+
+
 // Start server
 app.listen(port, () => {
   console.log(`🚛 Backend running at http://localhost:${port}`);
