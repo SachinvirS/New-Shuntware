@@ -93,3 +93,25 @@ app.post("/api/gatehouse", async (req, res) => {
 app.listen(port, () => {
   console.log(`🚛 Backend running at http://localhost:${port}`);
 });
+
+// ✅ Shunt move logger (auto-created when trailer is dragged)
+app.post("/api/shuntmove", async (req, res) => {
+  const { trailer, from, to, requestedBy, priority } = req.body;
+
+  try {
+    const move = new TrailerMove({
+      trailer,
+      from,
+      to,
+      requestedBy,
+      priority: priority || "NORMAL"
+    });
+
+    await move.save();
+    res.status(201).json({ message: "Shunt move created", move });
+  } catch (err) {
+    console.error("Failed to create shunt move", err);
+    res.status(500).json({ message: "Error creating move" });
+  }
+});
+
