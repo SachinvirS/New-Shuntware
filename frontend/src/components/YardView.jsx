@@ -33,7 +33,6 @@ export default function YardView() {
 
     try {
       await axios.put(`http://localhost:3001/api/trailers/${trailerId}`, { zone });
-
       await axios.post("http://localhost:3001/api/shuntmove", {
         trailer: trailer.trailerNumber,
         from: trailer.zone,
@@ -41,10 +40,26 @@ export default function YardView() {
         requestedBy: localStorage.getItem("username") || "Yard Manager",
         priority: "NORMAL"
       });
-
       fetchTrailers();
     } catch (err) {
       console.error("Error during trailer move", err);
+    }
+  };
+
+  const handleExit = async (trailerId) => {
+    try {
+      await axios.post("http://localhost:3001/api/gatehouse", {
+        trailerNumber: trailers.find(t => t._id === trailerId)?.trailerNumber,
+        type: "Exit",
+        driverName: localStorage.getItem("username") || "Gate Operator",
+        unitNumber: "",
+        notes: "Exited manually from YardView",
+        ppe: "Yes",
+        currentZone: "YARD"
+      });
+      fetchTrailers();
+    } catch (err) {
+      console.error("Error exiting trailer", err);
     }
   };
 
@@ -100,10 +115,16 @@ export default function YardView() {
           <p><strong>Unit:</strong> {selectedTrailer.unitNumber || "N/A"}</p>
           <p><strong>Last Move:</strong> {selectedTrailer.updatedAt ? new Date(selectedTrailer.updatedAt).toLocaleString() : "Unknown"}</p>
           <button
-            className="mt-3 px-4 py-2 bg-gray-600 text-white rounded"
+            className="mt-3 mr-2 px-4 py-2 bg-gray-600 text-white rounded"
             onClick={() => setSelectedTrailer(null)}
           >
             Close
+          </button>
+          <button
+            className="mt-3 px-4 py-2 bg-red-600 text-white rounded"
+            onClick={() => handleExit(selectedTrailer._id)}
+          >
+            Mark as Exit
           </button>
         </div>
       )}
