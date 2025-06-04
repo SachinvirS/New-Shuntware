@@ -83,3 +83,27 @@ export default function YardView() {
     </div>
   );
 }
+
+const handleDrop = async (e, zone) => {
+  const trailerId = e.dataTransfer.getData("trailerId");
+  const trailer = trailers.find(t => t._id === trailerId);
+  if (!trailer || trailer.zone === zone) return;
+
+  try {
+    // 1. Update trailer's zone
+    await axios.put(`http://localhost:3001/api/trailers/${trailerId}`, { zone });
+
+    // 2. Create a new shunt move log
+    await axios.post("http://localhost:3001/api/shuntmove", {
+      trailer: trailer.trailerNumber,
+      from: trailer.zone,
+      to: zone,
+      requestedBy: "Yard Manager", // Replace with actual logged-in user later
+      priority: "NORMAL"
+    });
+
+    fetchTrailers(); // Refresh UI
+  } catch (err) {
+    console.error("Error during trailer move", err);
+  }
+};
