@@ -141,6 +141,21 @@ app.get("/api/gatelogs", async (req, res) => {
   }
 });
 
+
+// GET all shunt moves
+app.get("/api/shuntmoves", async (req, res) => {
+  try {
+    const moves = await TrailerMove.find().sort({ timestamp: -1 }).limit(100);
+    res.json(moves);
+  } catch (err) {
+    console.error("Failed to fetch shunt moves", err);
+    res.status(500).json({ message: "Internal error" });
+  }
+});
+
+
+
+
 // Start server
 app.listen(port, () => {
   console.log(`🚛 Backend running at http://localhost:${port}`);
