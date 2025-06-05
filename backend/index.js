@@ -46,46 +46,88 @@ app.use("/api/trailers", trailerRoutes);
 app.post("/api/gatehouse", async (req, res) => {
   const {
     driverName,
-    trailerNumber,
-    unitNumber,
-    notes,
     ppe,
+    notes,
+    vehicleCarrier,
+    vehiclePlate,
+    vehicleNumber,
+    trailerNumber,
+    trailerCarrier,
+    trailerCategory,
+    trailerSize,
+    trailerProperty,
+    seal,
+    trailerComments,
+    loadAssignment,
+    billOfLading,
+    trailerLoadProperty,
+    trailerLoadComment,
+    destination,
     type,
     currentZone
   } = req.body;
 
   try {
-    // Save to GateLog always
+    // Log entry/exit in GateLog
     await GateLog.create({
       driverName,
-      trailerNumber,
-      unitNumber,
-      notes,
       ppe,
+      notes,
+      vehicleCarrier,
+      vehiclePlate,
+      vehicleNumber,
+      trailerNumber,
+      trailerCarrier,
+      trailerCategory,
+      trailerSize,
+      trailerProperty,
+      seal,
+      trailerComments,
+      loadAssignment,
+      billOfLading,
+      trailerLoadProperty,
+      trailerLoadComment,
+      destination,
       type,
       currentZone
     });
 
     if (type === "Entry") {
-      // Avoid duplicate trailers
-      const exists = await Trailer.findOne({ trailerNumber });
-      if (!exists) {
+      const existing = await Trailer.findOne({ trailerNumber });
+
+      if (!existing) {
         await Trailer.create({
           trailerNumber,
-          zone: currentZone,
-          status: "IN_YARD"
+          unitNumber: vehicleNumber,
+          driverName,
+          currentZone,
+          doorNumber: null,
+          status: "IN_YARD",
+          comments: [trailerComments],
+          history: [{
+            type: "Entered",
+            from: "Gate",
+            to: currentZone
+          }]
         });
       }
-      return res.json({ message: `✅ Trailer ${trailerNumber} added to yard.` });
+
+      return res.json({ message: `✅ Trailer ${trailerNumber} entered yard.` });
     } else {
-      // Trailer exited
+      // Exit logic: only allow if trailer is already in yard
+      const existing = await Trailer.findOne({ trailerNumber });
+
+      if (!existing) {
+        return res.status(400).json({ message: `❌ Trailer ${trailerNumber} is not currently in yard.` });
+      }
+
       await Trailer.deleteOne({ trailerNumber });
-      return res.json({ message: `🚪 Trailer ${trailerNumber} removed from yard.` });
+      return res.json({ message: `🚪 Trailer ${trailerNumber} exited yard.` });
     }
 
   } catch (err) {
     console.error("❌ Error in gatehouse route:", err);
-    res.status(500).json({ message: "Internal error processing gatehouse entry." });
+    res.status(500).json({ message: "Internal error processing gatehouse operation." });
   }
 });
 
@@ -98,7 +140,6 @@ app.get("/api/gatelogs", async (req, res) => {
     res.status(500).json({ message: "Internal error loading logs." });
   }
 });
-
 
 // Start server
 app.listen(port, () => {
@@ -125,4 +166,3 @@ app.post("/api/shuntmove", async (req, res) => {
     res.status(500).json({ message: "Error creating move" });
   }
 });
-
