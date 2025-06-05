@@ -1,7 +1,8 @@
 // backend/routes/trailers.js
-const express = require("express");
+import express from "express";
+import Trailer from "../models/Trailer.js";
+
 const router = express.Router();
-const Trailer = require("../models/Trailer");
 
 // Create or update trailer
 router.post("/", async (req, res) => {
@@ -10,7 +11,6 @@ router.post("/", async (req, res) => {
     let trailer = await Trailer.findOne({ trailerNumber });
 
     if (trailer) {
-      // Update existing
       trailer.unitNumber = unitNumber;
       trailer.driverName = driverName;
       trailer.currentZone = currentZone;
@@ -19,7 +19,6 @@ router.post("/", async (req, res) => {
       trailer.history.push({ type: "Update", from: trailer.currentZone, to: currentZone });
       await trailer.save();
     } else {
-      // New trailer
       trailer = new Trailer({
         trailerNumber,
         unitNumber,
@@ -40,15 +39,23 @@ router.post("/", async (req, res) => {
 
 // Get all trailers
 router.get("/", async (req, res) => {
-  const trailers = await Trailer.find();
-  res.json(trailers);
+  try {
+    const trailers = await Trailer.find();
+    res.json(trailers);
+  } catch (err) {
+    res.status(500).json({ message: "Error loading trailers" });
+  }
 });
 
-// Get a single trailer
+// Get single trailer
 router.get("/:trailerNumber", async (req, res) => {
-  const trailer = await Trailer.findOne({ trailerNumber: req.params.trailerNumber });
-  if (!trailer) return res.status(404).send("Not found");
-  res.json(trailer);
+  try {
+    const trailer = await Trailer.findOne({ trailerNumber: req.params.trailerNumber });
+    if (!trailer) return res.status(404).send("Not found");
+    res.json(trailer);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching trailer" });
+  }
 });
 
-module.exports = router;
+export default router;
