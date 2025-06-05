@@ -1,68 +1,91 @@
+// frontend/src/components/GatehouseForm.jsx
 import React, { useState } from "react";
+import axios from "axios";
 
 export default function GatehouseForm() {
-  const [form, setForm] = useState({
+  const [formData, setFormData] = useState({
     driverName: "",
     trailerNumber: "",
     unitNumber: "",
-    notes: "",
+    currentZone: "",
+    doorNumber: "",
+    status: "IN_YARD",
+    ppe: "",
     type: "Entry",
-    ppe: false,
-    currentZone: "ZONE A"
+    reason: "",
+    notes: ""
   });
-  const [status, setStatus] = useState("");
 
-  const handleChange = e => {
-    const { name, value, type, checked } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value
-    }));
+  const [message, setMessage] = useState("");
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const res = await fetch("http://localhost:3001/api/gatehouse", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form)
-    });
-    const data = await res.json();
-    setStatus(data.message);
-    setForm({
-      driverName: "",
-      trailerNumber: "",
-      unitNumber: "",
-      notes: "",
-      type: "Entry",
-      ppe: false,
-      currentZone: "ZONE A"
-    });
+
+    if (!formData.trailerNumber || !formData.driverName) {
+      return setMessage("🚫 Trailer number and driver name are required.");
+    }
+
+    try {
+      // Validate for exit: make sure trailer is in yard
+      if (formData.type === "Exit") {
+        const res = await axios.get(`http://localhost:3001/api/trailers/${formData.trailerNumber}`);
+        if (!res.data || res.data.status !== "IN_YARD") {
+          return setMessage("❌ Cannot exit — trailer not found in yard.");
+        }
+      }
+
+      // GateLog entry
+      await axios.post("http://localhost:3001/api/gatehouse", formData);
+
+      // Update/create trailer
+      if (formData.type === "Entry") {
+        await axios.post("http://localhost:3001/api/trailers", formData);
+      }
+
+      setMessage(`✅ ${formData.type} recorded for trailer ${formData.trailerNumber}`);
+      setFormData({
+        driverName: "",
+        trailerNumber: "",
+        unitNumber: "",
+        currentZone: "",
+        doorNumber: "",
+        status: "IN_YARD",
+        ppe: "",
+        type: "Entry",
+        reason: "",
+        notes: ""
+      });
+    } catch (err) {
+      console.error(err);
+      setMessage("❌ Error processing gatehouse action.");
+    }
   };
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-2">Gatehouse Entry</h2>
-      <form onSubmit={handleSubmit} className="grid gap-2 mb-4">
-        <input name="driverName" value={form.driverName} onChange={handleChange} placeholder="Driver Name" className="border p-2" />
-        <input name="trailerNumber" value={form.trailerNumber} onChange={handleChange} placeholder="Trailer #" className="border p-2" />
-        <input name="unitNumber" value={form.unitNumber} onChange={handleChange} placeholder="Unit #" className="border p-2" />
-        <textarea name="notes" value={form.notes} onChange={handleChange} placeholder="Notes" className="border p-2" />
-        <label><input type="checkbox" name="ppe" checked={form.ppe} onChange={handleChange} /> PPE Checked</label>
-        <select name="type" value={form.type} onChange={handleChange} className="border p-2">
+    <div className="p-4 bg-white rounded shadow max-w-xl mx-auto">
+      <h2 className="text-xl font-bold mb-4">🚪 Gatehouse Trailer Entry/Exit</h2>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="grid grid-cols-2 gap-4">
+          <input name="driverName" value={formData.driverName} onChange={handleChange} placeholder="Driver Name" className="border p-2 rounded" required />
+          <input name="trailerNumber" value={formData.trailerNumber} onChange={handleChange} placeholder="Trailer Number" className="border p-2 rounded" required />
+          <input name="unitNumber" value={formData.unitNumber} onChange={handleChange} placeholder="Unit Number" className="border p-2 rounded" />
+          <input name="currentZone" value={formData.currentZone} onChange={handleChange} placeholder="Zone (e.g., ZONE A)" className="border p-2 rounded" />
+          <input name="doorNumber" value={formData.doorNumber} onChange={handleChange} placeholder="Door #" type="number" className="border p-2 rounded" />
+          <input name="ppe" value={formData.ppe} onChange={handleChange} placeholder="PPE (e.g., Safety Vest)" className="border p-2 rounded" />
+        </div>
+        <select name="type" value={formData.type} onChange={handleChange} className="border p-2 rounded w-full">
           <option value="Entry">Entry</option>
           <option value="Exit">Exit</option>
         </select>
-        <select name="currentZone" value={form.currentZone} onChange={handleChange} className="border p-2">
-          <option value="ZONE A">ZONE A</option>
-          <option value="ZONE A1">ZONE A1</option>
-          <option value="ZONE B">ZONE B</option>
-          <option value="ZONE C">ZONE C</option>
-          <option value="ZONE D">ZONE D</option>
-        </select>
-        <button className="bg-green-500 text-white px-4 py-2">Submit</button>
+        <input name="reason" value={formData.reason} onChange={handleChange} placeholder="Reason for Entry/Exit" className="border p-2 rounded w-full" />
+        <textarea name="notes" value={formData.notes} onChange={handleChange} placeholder="Additional Notes" className="border p-2 rounded w-full" />
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Submit</button>
       </form>
-      {status && <p className="text-sm text-blue-600">{status}</p>}
+      {message && <p className="mt-3 text-sm text-gray-800">{message}</p>}
     </div>
   );
 }
