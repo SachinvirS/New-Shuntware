@@ -141,7 +141,6 @@ app.get("/api/gatelogs", async (req, res) => {
   }
 });
 
-
 // GET all shunt moves
 app.get("/api/shuntmoves", async (req, res) => {
   try {
@@ -152,9 +151,6 @@ app.get("/api/shuntmoves", async (req, res) => {
     res.status(500).json({ message: "Internal error" });
   }
 });
-
-
-
 
 // Start server
 app.listen(port, () => {
