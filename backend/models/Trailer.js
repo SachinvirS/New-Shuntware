@@ -1,5 +1,5 @@
 // backend/models/Trailer.js
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const trailerSchema = new mongoose.Schema({
   trailerNumber: { type: String, required: true, unique: true },
@@ -19,4 +19,6 @@ const trailerSchema = new mongoose.Schema({
   ]
 });
 
-module.exports = mongoose.model("Trailer", trailerSchema);
+const Trailer = mongoose.model("Trailer", trailerSchema);
+
+export default Trailer;
